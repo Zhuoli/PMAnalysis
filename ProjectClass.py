@@ -15,6 +15,8 @@ class ProjectAnalysis:
     FileTeamMembers = 'TeamMembers.txt'
     DEBUG = False;
     def __init__(self,projectDir,site,PRtraffic,KPTraffic=None):
+        print '###################################################################################################################'
+        print '                   PROJECT :  ' + projectDir
         projectDir = projectDir.strip()
         self.projectDir = projectDir
         site = site.lower()
@@ -31,9 +33,11 @@ class ProjectAnalysis:
         #PROJECT REPOSITORY ANALYSIS
         self.loadTeamMembers()
         self.getPRVisitHistory(PRtraffic)
+        self.getPRDocumentVisitLog()
         self.PRusers2time = {}
         self.rankTopVisitors(self.PRresult,self.PRusers2time)
         self.getNoneVisitors(self.PRusers2time,'Project Repository')
+        self.histogramChart(self.PRusers2time,'Project Repository')
         self.pieChart(self.PRusers2time,'Project Repository')
         # self.historyHistogram()
        
@@ -41,8 +45,9 @@ class ProjectAnalysis:
         self.getKPVisitHistory(KPTraffic)
         self.KPusers2time = {}
         self.rankTopVisitors(self.KPresult,self.KPusers2time)
-        self.pieChart(self.KPusers2time,'Knowledge Portal')
         self.getNoneVisitors(self.KPusers2time,'Knowledge Portal')
+        self.histogramChart(self.KPusers2time,'Knowledge Portal')
+        self.pieChart(self.KPusers2time,'Knowledge Portal')
     def loadTeamMembers(self):
         try:
             f = open(self.path +'/' + ProjectAnalysis.FileTeamMembers)
@@ -131,6 +136,21 @@ class ProjectAnalysis:
         f=open(self.path + '/AnalysisReport.txt','a+')
         f.write('Project Repository:  ' + str(len(self.PRresult.Date)) + ' times visits\n')
         f.close()
+        
+    def getPRDocumentVisitLog(self):
+        PRDocument='PRDocumentsVisit.csv'
+        if os.path.isfile(self.path+ '/'+PRDocument):
+            self.KPresult = pd.read_csv(self.path+ '/'+PRDocument)
+            if(ProjectAnalysis.DEBUG):
+                print 'VisitHistory load from existing file: ' + self.path+ '/'+PRDocument
+            return
+        ls = self.PRresult.Page.map(lambda x : ('.' in x.split('/')[len(x.split('/'))-1])  and (not (x.endswith(".aspx") or x.endswith('/')))).values
+        #print ls
+        self.PRdocuments = self.PRresult.loc[ls]
+        if 'Unnamed: 0' in self.PRdocuments.columns:
+            self.PRdocuments = self.PRdocuments.drop('Unnamed: 0',axis=1);
+        self.PRdocuments.index=range(0,len(self.PRdocuments.Date))
+        self.PRdocuments.to_csv(self.path+'/' + PRDocument)
     # calculate the PR visit history of this project team members  
     def getKPVisitHistory(self,traffic):
         KPResult = 'KPResult.csv'
@@ -173,7 +193,7 @@ class ProjectAnalysis:
         #for user in self.users2time.keys():
         #    f.write('\t' + user + ' : ' + str(self.users2time[user]) +'\n')
         #f.close()
-    def pieChart(self,user2time, chartTitle):
+    def histogramChart(self,user2time, chartTitle):
         if(ProjectAnalysis.DEBUG):
             print '\nFUNTION: pieChart'
         # Team Member Visits Rate Of PROJECT REPOSITORY
@@ -204,14 +224,43 @@ class ProjectAnalysis:
         plt.xlim(0, int(1.05 * maxWid))
         if(ProjectAnalysis.DEBUG):
             print 'Dir Path: ', self.path
-        fig.text(0.95, 0.01, self.inactiveMembers,
+        names=''
+        width=0
+        height=0
+        if len(self.inactiveMembers) >0:
+            names='  INACTIVE MEMBERS:   \n'
+            width=17;
+            height=2;
+        for name in self.inactiveMembers:
+            names = names + '\n' + name
+            width=max(width,len(name))
+            height=max(height,len(name))
+        SIZE='medium';
+        if len(self.inactiveMembers)>20:
+            SIZE='small'
+        fig.text(1.0-width/150.0, 0.15, names,
+        backgroundcolor=(0.9,  0.8, 0.9),
         verticalalignment='bottom', horizontalalignment='right',
        # transform=fig.transAxes,
+        size=SIZE,
         color='green', fontsize=15)
         plt.savefig(self.path+ '/' + chartTitle +' visitsRate')
         #plt.show()
-        
-        
+
+    def pieChart(self,user2time,chartTitle):
+        lastnames = []
+        names = user2time.keys()
+        for name in names:
+            if ',' in name:
+                lastnames.append(name.split(',')[1])
+            else:
+                lastnames.append(name)
+        names=lastnames
+        visits = user2time.values()
+        plt.subplot(aspect=True)
+        plt.pie(visits, labels=names, autopct='%i%%')
+        plt.title("Visits frequency")
+        plt.savefig(self.path+ '/' + chartTitle +' PieChart')
     def getNoneVisitors(self,users2time,title):
         if(ProjectAnalysis.DEBUG):
             print '\nFUNTION: getNoneVisitors ' + title
@@ -221,11 +270,11 @@ class ProjectAnalysis:
         if(ProjectAnalysis.DEBUG):
             print 'users num: ', len(sets), '  ', len(subsets)
         negativeMembers=[];
-        self.inactiveMembers = negativeMembers
         for member in sets:
             if not member in subsets:
                 negativeMembers.append(member)
                 #print member
+        self.inactiveMembers = negativeMembers
         f=open(self.path + '/AnalysisReport.txt','a+')
         if len(negativeMembers) != 0:
             f.write('\nThese members did NOT visit ' + title + ': \n')
