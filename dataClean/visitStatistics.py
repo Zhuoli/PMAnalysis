@@ -4,6 +4,7 @@ Created on Mar 20, 2014
 @author: CT61557
 '''
 import pandas as pd
+import sys
 from EmailCommunication.EmailAnimation import  *
 
 def reverseDate(day):
@@ -13,12 +14,12 @@ def reverseDate(day):
     day=str((int)(days[2]))
     return month+'/'+day+'/'+year
 # get the PR visit history table saved in this project folder
-def getVisitStatistics(path,project,name='',flag=False,saveName='visitHistory.csv'):
+def getVisitStatistics(path,project,name='',flag=False,saveName=''):
     df=pd.read_csv(path)
     df.index=df.Date
     df=df.drop(['Unnamed: 0','Date'], axis=1)
-    start='2013-04-11 00:00:01'
     dicts={}
+    start='2013-04-11 00:00:01'
     for i in range(0,365):
         start=addEndDate(start,1)
         date=start.split(' ')[0]
@@ -45,15 +46,23 @@ def getVisitStatistics(path,project,name='',flag=False,saveName='visitHistory.cs
                 dicts[index]=1
             else:
                 dicts[index]=0
-    date=[]
-    count=[]
-    for key in dicts.keys():
-        date.append(key)
-        count.append(dicts[key])
-    dicts={'Date':date,'Count':count}
-    out=pd.DataFrame(dicts)
-    out=out[['Date','Count']]
-    out.to_csv('../../result/'+project+'/' + saveName)
+    dates=[]
+    rates=[]
+    start='2013-04-11 00:00:01'
+    for i in range(0,365):
+        start=addEndDate(start,1)
+        date=start.split(' ')[0]
+        if '-' in df.index[0]:
+            date=date
+        else:
+            date=reverseDate(date)
+        dates.append(date)
+        rates.append(dicts[date])
+    return dates,rates
+    #dicts={'Date':date,'Count':count}
+    #out=pd.DataFrame(dicts)
+    #out=out[['Date','Count']]
+    #out.to_csv('../../result/'+project+'/' + saveName)
 
 def clean2Statistics(fromPath,toPath,column='Source'):
     df=pd.read_csv(fromPath)
@@ -64,7 +73,7 @@ def clean2Statistics(fromPath,toPath,column='Source'):
     data.Date=data.Date.map(lambda x : x.split(' ')[0])
     data.to_csv(toPath)
     return 
-
+######## Email Communicatiory History ################
 #project='KnowledgeEcoSystem2'
 #fromPath='../../data/gephidata.csv'
 #destPath='../../result/'+project+'/emailHistory.csv'
@@ -72,8 +81,31 @@ def clean2Statistics(fromPath,toPath,column='Source'):
 #getVisitStatistics('../../result/'+project+'/emailHistory.csv',project,flag=False,name='Robert',saveName='emailHistory.csv')
 
 ######## Project Repository visit rate ##############
+
 project = 'KnowledgeEcoSystem2'
-members =getMembersName(project,path='../../result/' + project +'/TeamMembers.txt')
-print members
-path='../../result/'+project+'/PRResult.csv'
-#getVisitStatistics(path,project,name='Robert')
+def getTeamMembersPRHistory(project,dataset):
+    PR = 'PRResult.csv'
+    KP = 'KPResult.csv'
+    source=''
+    if dataset=='PR':
+        source=PR
+    elif dataset =='KP':
+        source=KP
+    else:
+        sys.stderr.write('Parameter ERROR:  "getTeamMembersPRHistory" Please give appropriate parameter')
+        sys.exit(0)
+    members =getMembersName(project,path='../../result/' + project +'/TeamMembers.txt')
+    #print members
+    path='../../result/'+project+'/' + source
+    dicts={}
+    dates=range(0,365)
+    for member in members:
+        member = member.split(',')[1].strip()
+        dates,rates = getVisitStatistics(path,project,name=member)
+        dicts[member]=rates
+    df=pd.DataFrame(dicts,index=dates)
+    #print dates 
+    df.to_csv('../../result/'+project+'/' + dataset +  'visitHistory.csv')
+    
+
+getTeamMembersPRHistory(project,'KP')
