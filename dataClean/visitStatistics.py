@@ -5,6 +5,7 @@ Created on Mar 20, 2014
 '''
 import pandas as pd
 import sys
+import os
 from EmailCommunication.EmailAnimation import  *
 
 def reverseDate(day):
@@ -82,7 +83,7 @@ def clean2Statistics(fromPath,toPath,column='Source'):
 
 ######## Project Repository visit rate ##############
 
-project = 'KnowledgeEcoSystem2'
+project = 'Cancelled__Varonis5.8Upgrade'
 def getTeamMembersPRHistory(project,dataset):
     PR = 'PRResult.csv'
     KP = 'KPResult.csv'
@@ -100,12 +101,17 @@ def getTeamMembersPRHistory(project,dataset):
     dicts={}
     dates=range(0,365)
     for member in members:
-        member = member.split(',')[1].strip()
+        try:
+            member = member.split(',')[1].strip()
+        except:
+            pass
         dates,rates = getVisitStatistics(path,project,name=member)
         dicts[member]=rates
     df=pd.DataFrame(dicts,index=dates)
     #print dates 
     df.to_csv('../../result/'+project+'/' + dataset +  'visitHistory.csv')
     
-
-getTeamMembersPRHistory(project,'KP')
+for project in os.listdir('../../result'):
+    print project
+    getTeamMembersPRHistory(project,'KP')
+    getTeamMembersPRHistory(project,'PR')
