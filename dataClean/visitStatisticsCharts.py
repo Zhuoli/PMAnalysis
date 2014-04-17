@@ -31,7 +31,7 @@ def drawVisitHistory(project):
         dicts['prVisit']=pr[member].values
         df=pd.DataFrame(dicts,index=pr.index)
         figure=plt.Figure();
-        df.plot(subplots=True,kind='line',ylim=0,figsize=(15,7),title=member+'\'s visit History')
+        df.plot(subplots=True,kind='line',ylim=[0,50],figsize=(15,7),title=member+'\'s visit History')
         plt.savefig(saveDir+member+'.png')
         df.to_csv(saveDir+'tables/'+member +'.csv')
         plt.close()
