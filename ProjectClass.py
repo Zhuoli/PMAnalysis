@@ -8,13 +8,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os.path
 import sys
+import MySQLdb as msq
+import mysqlOperation.setConnection as sql
+import FilePaths
 
 class ProjectAnalysis:
     #class variable counts the number of projects
     projectsNum = 0;
-    FileTeamMembers = 'TeamMembers.txt'
+    FileTeamMembers = FilePaths.FileTeamMembers
     DEBUG = False;
-    def __init__(self,projectDir,site,PRtraffic,KPTraffic=None):
+    def __init__(self,projectDir,site,PRtraffic,KPTraffic=None):  
+        self.name2acount={}
+        self.acount2name={}
         print '###################################################################################################################'
         print '                   PROJECT :  ' + projectDir
         projectDir = projectDir.strip()
@@ -57,8 +62,6 @@ class ProjectAnalysis:
             sys.exit(0)
         names= f.readlines()
         members=[]
-        self.name2acount={}
-        self.acount2name={}
         miss=[]
         if(ProjectAnalysis.DEBUG):
             print names
@@ -313,3 +316,43 @@ class ProjectAnalysis:
         plt.axis([4, 12, 0, 100])
         plt.grid(True)
         plt.savefig(self.path+'/ProjectSiteVisitHistory')
+        
+    # SQL 
+    def projectsInsertAliaNames(self,conn):
+        root='../../result'
+        aliaNames = os.listdir(root)
+        try:
+            cur=conn.cursor()
+            for alianame in aliaNames:
+                sql = 'INSERT INTO ' + FilePaths.PROJECT_TABLE + " (name,alias) values (%s,%s)"
+                cur.execute(sql,(alianame,alianame))
+                # commit your changes in the database
+                conn.commit()
+            cur.close()
+            conn.close()
+        except msq.Error,e:
+            print "Mysql Error %d: %s " %(e.args[0],e.args[1])
+
+    def project_member_Insert(self,conn):
+        root='../../result'
+        aliases = os.listdir(root)
+        try:
+            cur=conn.cursor()
+            tableID=1
+            for alias in aliases:
+                members = self.getTeamMembers(root,alias)
+                for member in members:
+                    sql = 'INSERT INTO ' + FilePaths.PROJECT_MEMBER + " (tableID,project,member) values (%s,%s,%s)"
+                    data=(tableID,alias,member)
+                    tableID=tableID+1;
+                    cur.execute(sql,data)
+                    # commit your changes in the database
+                    conn.commit()
+                path=root+'/'+alias+'/charts/tables'
+                excels=os.listdir(path)
+            
+            cur.close()
+            conn.close()
+        except msq.Error,e:
+            print "Mysql Error %d: %s " %(e.args[0],e.args[1])
+
